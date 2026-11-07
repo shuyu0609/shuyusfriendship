@@ -33,4 +33,176 @@ ul{margin:6px 0 0;padding-left:16px}
 </defs></svg>
 <header><h1>書妤之交</h1>
 <span class="lg"><svg width="22" height="22" viewBox="-1 -1 2 2"><circle r="1" fill="#8a8a8a"/><use href="#av-f" x="-1" y="-1" width="2" height="2"/></svg>女生</span>
-<span class="lg"><svg width="22" height="22" viewBox="-1 -1 2 2">
+<span class="lg"><svg width="22" height="22" viewBox="-1 -1 2 2"><circle r="1" fill="#8a8a8a"/><use href="#av-m" x="-1" y="-1" width="2" height="2"/></svg>男生</span>
+<span><span style="color:#ff5d8f">♥</span> 情侶／夫妻</span>
+<span><span style="color:#9a9a9a">♥</span> 前任</span><span class="pf"><b>關係路徑</b><select id="pa"></select>→<select id="pb"></select><label><input type="checkbox" id="pc" checked>不經過書妤</label><button id="px">清除</button></span></header>
+<main><svg id="s"></svg><aside id="p"></aside></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+const R={1:42,2:30,3:21,4:15},RAD={1:0,2:190,3:310,4:440},COL={1:'#f2b134',2:'#3d85c6',3:'#2f9e7d',4:'#8f6bb8'};
+// [id, tier, gender, note, displayName]
+const raw=[
+['書妤',1,'f','高中105學年度畢業生優良學生（與浩維、鐘偉哲同場頒獎）'],
+['芫緣',2,'f','國中同學；爸媽的乾女兒；麥味登股東；保險業務員'],
+['語芹',2,'f','高中同學'],['喻敏',2,'f','高中同學；德明科大'],
+['浩維',2,'m','高中同學；市長獎（105學年度畢業生）'],
+['心瑜',2,'f','大學同學'],['淯玲',2,'f','大學同學'],
+['哥哥',3,'m','書妤哥哥；與書妤同國中'],['嘉綾',3,'f','書妤大嫂；與書妤同國中'],
+['邱邱',3,'m','淯玲男友；德明科大'],
+['阿耀',3,'m','芫緣男友；鐘偉哲前同事'],
+['威廷',3,'m','書妤前男友；麥味登股東'],
+['旻謙',3,'m','芫緣堂哥；威廷高中同學；麥味登股東'],
+['芳蘋',4,'f','浩維前女友；書妤高中同學；德明科大'],
+['古亦軒',4,'m','高中同學；致理科大'],['古亦展',4,'m','古亦軒弟弟；芳蘋男友；德明科大'],
+['羅璽然',4,'m','淯玲前男友；芫緣麥味登土城店同區店店長'],
+['袁薪嵐',4,'f','大學同學；黃沛明、彭證耘、彭證耘女友的牌友'],
+['黃沛明',4,'m','芫緣曾經的50嵐同事、前男友；書妤國小安親班同學；嘉綾鄰居；麥味登股東'],
+['彭證耘',4,'m','芫緣曾經的50嵐同事；所有麥味登股東的牌友'],
+['彭證耘女友',4,'f','心瑜高中同學的妹妹'],
+['鐘偉哲',4,'m','阿耀前同事；書妤同屆高中機械科；市長獎（與浩維同場）'],
+['家豪',3,'m','語芹男友'],
+['家豪的妹妹',4,'f','家豪的妹妹；Brian的女友'],
+['Brian',4,'m','家豪妹妹的男朋友；威廷前同事']
+];
+const N=raw.map(([id,tier,g,note,name])=>({id,tier,g,note,name:name||id}));
+const by=Object.fromEntries(N.map(n=>[n.id,n]));
+// [a,b,label,type(c=情侶 x=前任),relText]
+const L0=[
+['書妤','哥哥','兄妹／同國中'],['書妤','嘉綾','大嫂／同國中'],['哥哥','嘉綾','','c','夫妻'],
+['書妤','芫緣','國中同學'],
+['書妤','語芹','高中同學'],['書妤','喻敏','高中同學'],['書妤','浩維','高中同學／同場頒獎'],['書妤','古亦軒','高中同學'],['書妤','芳蘋','高中同學'],['書妤','鐘偉哲','同屆／同場頒獎'],
+['書妤','心瑜','大學同學'],['書妤','淯玲','大學同學'],['書妤','袁薪嵐','大學同學'],
+['書妤','威廷','','x','前男友'],['書妤','黃沛明','國小安親班同學'],
+['浩維','鐘偉哲','同領市長獎'],['浩維','芳蘋','','x','前女友'],
+['淯玲','邱邱','','c','情侶'],['淯玲','羅璽然','','x','前男友'],
+['芫緣','阿耀','','c','情侶'],['阿耀','鐘偉哲','前同事'],
+['芫緣','旻謙','堂哥'],['芫緣','威廷','麥味登股東'],['威廷','旻謙','高中同學／股東'],
+['芫緣','羅璽然','同區店長'],['芫緣','黃沛明','前50嵐同事／股東','x','前男友'],['芫緣','彭證耘','前50嵐同事／牌友'],
+['芳蘋','古亦展','','c','情侶'],['古亦軒','古亦展','兄弟'],
+['袁薪嵐','黃沛明','牌友'],['袁薪嵐','彭證耘','牌友'],['袁薪嵐','彭證耘女友','牌友'],
+['彭證耘','威廷','牌友'],['彭證耘','旻謙','牌友'],['彭證耘','黃沛明','牌友／50嵐同事'],
+['黃沛明','嘉綾','鄰居'],['黃沛明','威廷','股東'],['黃沛明','旻謙','股東'],
+['彭證耘','彭證耘女友','','c','情侶'],['彭證耘女友','心瑜','心瑜高中同學的妹妹'],
+['語芹','家豪','','c','情侶'],['家豪','家豪的妹妹','兄妹'],['家豪的妹妹','Brian','','c','情侶'],['Brian','威廷','前同事']
+];
+const L=L0.map(([a,b,label,t,rel])=>({source:by[a],target:by[b],label,t,rel}));
+const relText=l=>l.t?(l.label?`${l.rel}／${l.label}`:l.rel):l.label;
+const HC={c:'#ff5d8f',x:'#9a9a9a'};
+
+// sectors: [key, members, gap after]
+const SEC=[
+['jr',['哥哥','嘉綾','芫緣'],.20],
+['mw',['阿耀','彭證耘女友','彭證耘','羅璽然','黃沛明','旻謙','威廷'],.20],
+['hj',['Brian','家豪的妹妹','家豪'],.08],
+['un',['淯玲','袁薪嵐','心瑜'],.06],
+['hs',['古亦軒','語芹','鐘偉哲','浩維','喻敏','芳蘋'],.06],
+['dx',['古亦展'],.06],
+['qiu',['邱邱'],.20]];
+const cx=550,cy=550;
+const cnt=SEC.reduce((s,g)=>s+g[1].length,0);
+const per=(2*Math.PI-SEC.reduce((s,g)=>s+g[2],0))/cnt;
+let a=-Math.PI/2+.1;
+SEC.forEach(([k,m,gap])=>{m.forEach((id,i)=>{const t=a+(i+.5)*per,n=by[id];n.tx=cx+RAD[n.tier]*Math.cos(t);n.ty=cy+RAD[n.tier]*Math.sin(t);n.x=n.tx;n.y=n.ty});a+=m.length*per+gap});
+const me=by['書妤'];me.x=me.fx=me.tx=cx;me.y=me.fy=me.ty=cy;
+
+const svg=d3.select('#s').attr('viewBox','0 0 1100 1100').attr('preserveAspectRatio','xMidYMid meet');
+const root=svg.append('g');
+svg.call(d3.zoom().scaleExtent([.5,3]).on('zoom',e=>root.attr('transform',e.transform)));
+const mem=k=>SEC.find(s=>s[0]===k)[1];
+const BOX=[
+ {t:'忠孝國中',c:'#7d7d7d',m:['哥哥','嘉綾','芫緣']},
+ {t:'大同高中',c:'#7d7d7d',m:mem('hs')},
+ {t:'致理科大',c:'#1c7ed6',m:[...mem('un'),'古亦軒']},
+ {t:'德明科大',c:'#e8590c',m:['喻敏','芳蘋','古亦展','邱邱']}
+].map(b=>({...b,m:b.m.map(i=>by[i])}));
+const boxG=root.append('g').selectAll('g').data(BOX).join('g');
+boxG.append('path').attr('fill',d=>d.c).attr('fill-opacity',.07).attr('stroke',d=>d.c).attr('stroke-width',2).attr('stroke-dasharray',d=>d.t==='德明科大'?null:'7 5');
+boxG.append('rect').attr('height',22).attr('rx',11).attr('fill',d=>d.c);
+boxG.append('text').text(d=>d.t).attr('text-anchor','middle').attr('font-size',14).attr('font-weight',700).attr('fill','#fff');
+[2,3,4].forEach(t=>root.append('circle').attr('cx',cx).attr('cy',cy).attr('r',RAD[t]).attr('fill','none').attr('stroke','var(--line)').attr('stroke-dasharray','3 7').attr('opacity',.5));
+const link=root.append('g').selectAll('line').data(L).join('line').attr('stroke',d=>d.t?HC[d.t]:'var(--line)').attr('stroke-width',d=>d.t?4:1.4).attr('opacity',d=>d.t?.9:.55);
+const lbl=root.append('g').selectAll('text').data(L.filter(l=>l.label)).join('text').text(d=>d.label).attr('font-size',10).attr('text-anchor','middle').attr('fill','var(--mut)').attr('stroke','var(--bg)').attr('stroke-width',3).attr('paint-order','stroke').style('pointer-events','none');
+const heart=root.append('g').selectAll('text').data(L.filter(l=>l.t)).join('text').text('♥').attr('font-size',24).attr('text-anchor','middle').attr('dy','.35em').attr('fill',d=>HC[d.t]).attr('stroke','var(--bg)').attr('stroke-width',3).attr('paint-order','stroke').style('pointer-events','none');
+const pathG=root.append('g');const pathL=pathG.selectAll('line').data(L).join('line').attr('stroke','#f08c00').attr('stroke-width',8).attr('stroke-linecap','round').attr('opacity',0).style('pointer-events','none');
+const tw=s=>[...s].reduce((w,c)=>w+(c.charCodeAt(0)>255?1:.55),0);
+const node=root.append('g').selectAll('g').data(N).join('g').style('cursor','pointer');
+node.each(function(d,i){
+ const g=d3.select(this),r=R[d.tier],fs=d.tier===1?16:d.tier===2?14:12;
+ g.append('circle').attr('class','base').attr('r',r).attr('fill',COL[d.tier]).attr('stroke',d.tier===1?'var(--fg)':'var(--bg)').attr('stroke-width',d.tier===1?3:2);
+ g.append('use').attr('class','av').attr('href',d.g==='f'?'#av-f':'#av-m').attr('x',-r).attr('y',-r).attr('width',2*r).attr('height',2*r);
+ g.append('clipPath').attr('id','cp'+i).append('circle').attr('r',r);
+ g.append('image').attr('class','img').attr('clip-path',`url(#cp${i})`).attr('x',-r).attr('y',-r).attr('width',2*r).attr('height',2*r).attr('preserveAspectRatio','xMidYMid slice').style('display','none');
+ const w=tw(d.name)*fs+18;d.cr=Math.max(r+16,w/2+6);
+ g.append('rect').attr('x',-w/2).attr('y',r-4).attr('width',w).attr('height',fs+8).attr('rx',(fs+8)/2).attr('fill',COL[d.tier]).attr('stroke','var(--bg)').attr('stroke-width',2);
+ g.append('text').text(d.name).attr('y',r-4+(fs+8)/2).attr('dy','.35em').attr('text-anchor','middle').attr('font-size',fs).attr('font-weight',600).attr('fill',d.tier===1?'#3a2a00':'#fff').style('pointer-events','none');
+});
+const PHOTOS=Object.fromEntries(['書妤','芫緣','語芹','喻敏','浩維','心瑜','淯玲'].map(n=>[n,encodeURIComponent(n)+'.jpg']));
+node.each(function(d){const u=PHOTOS[d.id];if(u){const g=d3.select(this),r=R[d.tier],im=new Image();im.onload=()=>{g.select('.img').attr('href',u).style('display',null);g.select('.av').style('display','none');const f=g.append('circle').attr('r',r).attr('fill','none').attr('stroke',d.tier===1?'var(--fg)':COL[d.tier]).attr('stroke-width',3);g.select('.img').node().after(f.node())};im.src=u}});
+const sim=d3.forceSimulation(N).alphaDecay(.05)
+ .force('x',d3.forceX(d=>d.tx).strength(.6)).force('y',d3.forceY(d=>d.ty).strength(.6))
+ .force('collide',d3.forceCollide(d=>d.cr));
+const line=d3.line().curve(d3.curveCatmullRomClosed.alpha(.6));
+sim.on('tick',()=>{
+ link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+ pathL.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+ lbl.attr('x',d=>(d.source.x+d.target.x)/2).attr('y',d=>(d.source.y+d.target.y)/2+(d.t?20:0));
+ heart.attr('x',d=>(d.source.x+d.target.x)/2).attr('y',d=>(d.source.y+d.target.y)/2);
+ node.attr('transform',d=>`translate(${d.x},${d.y})`);
+ boxG.each(function(b){
+  const p=[];b.m.forEach(n=>{for(let k=0;k<12;k++){const t=k*Math.PI/6;p.push([n.x+(R[n.tier]+30)*Math.cos(t),n.y+(R[n.tier]+30)*Math.sin(t)])}});
+  const h=d3.polygonHull(p);
+  const sx=d3.sum(b.m,n=>Math.cos(Math.atan2(n.y-cy,n.x-cx))),sy=d3.sum(b.m,n=>Math.sin(Math.atan2(n.y-cy,n.x-cx))),dl=Math.hypot(sx,sy)||1,ux=sx/dl,uy=sy/dl;
+  const top=h.reduce((m,q)=>((q[0]-cx)*ux+(q[1]-cy)*uy>(m[0]-cx)*ux+(m[1]-cy)*uy)?q:m);
+  const tx=top[0]+ux*22,ty=top[1]+uy*22;
+  d3.select(this).select('path').attr('d',line(h));
+  d3.select(this).select('rect').attr('x',tx-39).attr('y',ty-11).attr('width',78);
+  d3.select(this).select('text').attr('x',tx).attr('y',ty+5);
+ });
+});
+node.call(d3.drag().on('start',(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y})
+ .on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y}).on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0);if(d.tier>1){d.fx=null;d.fy=null}}));
+
+const P=document.getElementById('p');
+const HINT='<b>點選人物</b><div class="mut">可聚焦該人的所有關係；點空白處還原。</div>';
+P.innerHTML=HINT;
+function pick(d){
+ const rel=L.filter(l=>l.source===d||l.target===d);
+ const ids=new Set([d.id]);rel.forEach(l=>{ids.add(l.source.id);ids.add(l.target.id)});
+ node.attr('opacity',n=>ids.has(n.id)?1:.15);
+ link.attr('opacity',l=>rel.includes(l)?.95:.05);
+ lbl.attr('opacity',l=>rel.includes(l)?1:.08).attr('fill',l=>rel.includes(l)?'var(--fg)':'var(--mut)');
+ heart.attr('opacity',l=>rel.includes(l)?1:.1);
+ P.innerHTML=`<b>${d.name}</b><div>${d.note}</div><ul>${rel.map(l=>{const o=l.source===d?l.target:l.source;return `<li>${o.name}：${relText(l)}</li>`}).join('')}</ul>`+
+ (d.tier<=2?`<div style="margin-top:8px">上傳照片：<input type="file" accept="image/*" id="up"></div>`:'');
+ const up=document.getElementById('up');
+ if(up)up.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{
+  const s=node.filter(n=>n===d);s.select('.img').attr('href',rd.result).style('display',null);s.select('.av').style('display','none')};rd.readAsDataURL(f)};
+}
+node.on('click',(e,d)=>{e.stopPropagation();pick(d)});
+svg.on('click',()=>{node.attr('opacity',1);link.attr('opacity',d=>d.t?.9:.55);lbl.attr('opacity',1).attr('fill','var(--mut)');heart.attr('opacity',1);P.innerHTML=HINT});
+
+const sa=document.getElementById('pa'),sb=document.getElementById('pb'),sc=document.getElementById('pc');
+[sa,sb].forEach(s=>{s.innerHTML='<option value="">選擇…</option>'+N.map(n=>`<option value="${n.id}">${n.name}</option>`).join('')});
+function resetAll(){node.attr('opacity',1);link.attr('opacity',d=>d.t?.9:.55);lbl.attr('opacity',1).attr('fill','var(--mut)');heart.attr('opacity',1);pathL.attr('opacity',0);P.innerHTML=HINT}
+function showPath(){
+ const a=sa.value,b=sb.value;if(!a||!b||a===b){resetAll();return}
+ const ex=sc.checked?'書妤':null,prev=new Map([[a,null]]),q=[a];
+ while(q.length){const u=q.shift();if(u===b)break;
+  for(const l of L){let v;if(l.source.id===u)v=l.target.id;else if(l.target.id===u)v=l.source.id;else continue;
+   if(prev.has(v)||(v===ex&&v!==b))continue;prev.set(v,{u,l});q.push(v)}}
+ if(!prev.has(b)){resetAll();P.innerHTML=`<b>${by[a].name} → ${by[b].name}</b><div class="mut">找不到路徑${ex?'（可取消「不經過書妤」再試）':''}</div>`;return}
+ const nodes=[],edges=[];let c=b;
+ while(c){nodes.unshift(c);const p=prev.get(c);if(p){edges.unshift(p.l);c=p.u}else c=null}
+ const inE=l=>edges.includes(l);
+ node.attr('opacity',n=>nodes.includes(n.id)?1:.15);
+ link.attr('opacity',l=>inE(l)?.95:.05);
+ lbl.attr('opacity',l=>inE(l)?1:.08).attr('fill',l=>inE(l)?'var(--fg)':'var(--mut)');
+ heart.attr('opacity',l=>inE(l)?1:.1);
+ pathL.attr('opacity',l=>inE(l)?.55:0);
+ P.innerHTML=`<b>${by[a].name} → ${by[b].name}</b><div class="mut">共 ${edges.length} 步</div><ol>`+edges.map((l,i)=>`<li>${by[nodes[i]].name} → ${by[nodes[i+1]].name}：${relText(l)}</li>`).join('')+'</ol>';
+}
+sa.onchange=sb.onchange=sc.onchange=showPath;
+document.getElementById('px').onclick=()=>{sa.value='';sb.value='';resetAll()};
+const _pick=pick;pick=function(d){pathL.attr('opacity',0);_pick(d)};
+svg.on('click',()=>{sa.value='';sb.value='';resetAll()});
+</script></body></html>
